@@ -1,0 +1,28 @@
+# OOM investigation runbook — read-only steps for a CrashLoopBackOff pod.
+# All commands are simulated in the demo (see src/orbitronops_runbook/simulator.py).
+name: OOM investigation
+description: Investigate a CrashLoopBackOff pod suspected of running out of memory.
+service: checkout-api
+steps:
+  - id: describe-pod
+    description: Describe the pod to see its last terminated state.
+    command: kubectl describe pod checkout-api-7d9f8 -n prod
+    expected: "contains: OOMKilled"
+  - id: logs-previous
+    description: Read the previous container logs for the out-of-memory error.
+    command: kubectl logs checkout-api-7d9f8 -n prod --previous
+    expected: "contains: OutOfMemoryError"
+  - id: top-pod
+    description: Check current memory usage against the limit.
+    command: kubectl top pod checkout-api-7d9f8 -n prod
+    expected: "contains: 511Mi"
+  - id: check-limit
+    description: Confirm the configured memory limit before recommending a change.
+    command: kubectl get pod checkout-api-7d9f8 -n prod
+    expected: "contains: 512Mi"
+    requires_approval: true
+    approver_role: Platform Engineer
+  - id: recent-events
+    description: List recent events for corroborating OOMKilling signals.
+    command: kubectl get events --sort-by=.lastTimestamp -n prod
+    expected: "contains: OOMKilling"

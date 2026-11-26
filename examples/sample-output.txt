@@ -1,0 +1,33 @@
+Runbook: OOM investigation  ·  Service: checkout-api
+Status: completed  ·  Steps passed: 5/5
+
+[PASS] describe-pod: kubectl describe pod checkout-api-7d9f8 -n prod
+         Name:         checkout-api-7d9f8
+         Namespace:    prod
+         Status:       CrashLoopBackOff
+         Containers:
+           checkout-api:
+             Last State:     Terminated
+               Reason:       OOMKilled
+               Exit Code:    137
+             Restart Count:  12
+         Events:
+           Warning  OOMKilling  Memory cgroup out of memory
+[PASS] logs-previous: kubectl logs checkout-api-7d9f8 -n prod --previous
+         2026-11-15T10:02:11Z INFO  starting checkout-api
+         2026-11-15T10:02:40Z ERROR java.lang.OutOfMemoryError: Java heap space
+         2026-11-15T10:02:40Z ERROR at com.acme.checkout.CartService.load(CartService.java:41)
+[PASS] top-pod: kubectl top pod checkout-api-7d9f8 -n prod
+         NAME                CPU(cores)   MEMORY(bytes)
+         checkout-api-7d9f8   245m         511Mi
+[PASS] check-limit: kubectl get pod checkout-api-7d9f8 -n prod
+         approved by: on-call-lead
+         NAME                READY   STATUS             RESTARTS   AGE
+         checkout-api-7d9f8   0/1     CrashLoopBackOff   12         42m
+         Limits: memory 512Mi, cpu 500m
+[PASS] recent-events: kubectl get events --sort-by=.lastTimestamp -n prod
+         LAST SEEN   TYPE      REASON       OBJECT
+         10m         Warning   OOMKilling   pod/checkout-api-7d9f8
+         10m         Warning   BackOff      pod/checkout-api-7d9f8
+
+Audit record written to: audit/audit.jsonl

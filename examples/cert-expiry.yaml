@@ -1,0 +1,23 @@
+# Certificate-expiry check runbook — read-only steps for a TLS certificate.
+name: Certificate expiry check
+description: Check whether the checkout-api TLS certificate is about to expire.
+service: checkout-api
+steps:
+  - id: get-secret
+    description: Confirm the TLS secret exists.
+    command: kubectl get secret tls-checkout-api -n prod
+    expected: "contains: kubernetes.io/tls"
+  - id: check-expiry
+    description: Read the certificate expiry date.
+    command: openssl x509 -in cert.pem -noout -enddate
+    expected: "contains: Nov 22"
+  - id: get-ingress
+    description: Confirm the ingress still serves the certificate host.
+    command: kubectl get ingress checkout-api -n prod
+    expected: "contains: checkout.example.com"
+    requires_approval: true
+    approver_role: Platform Engineer
+  - id: describe-cert
+    description: Describe the cert-manager certificate for its renewal time.
+    command: kubectl describe certificate tls-checkout-api -n prod
+    expected: "contains: Renewal Time"

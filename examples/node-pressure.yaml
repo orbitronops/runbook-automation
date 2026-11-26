@@ -1,0 +1,27 @@
+# Node-pressure investigation runbook — read-only steps for a NotReady node.
+name: Node pressure investigation
+description: Investigate a node reporting MemoryPressure and DiskPressure.
+service: platform
+steps:
+  - id: list-nodes
+    description: List nodes and their readiness.
+    command: kubectl get nodes
+    expected: "contains: NotReady"
+  - id: describe-node
+    description: Describe the unhealthy node to see its conditions and usage.
+    command: kubectl describe node node-c
+    expected: "contains: MemoryPressure"
+  - id: top-nodes
+    description: Compare CPU and memory usage across nodes.
+    command: kubectl top node
+    expected: "contains: 96%"
+  - id: pods-on-node
+    description: List the workloads running on the pressured node.
+    command: kubectl get pods --field-selector spec.nodeName=node-c -A
+    expected: "contains: batch-worker-3"
+    requires_approval: true
+    approver_role: SRE / On-Call Lead
+  - id: node-events
+    description: List recent events for the pressured node.
+    command: kubectl get events --sort-by=.lastTimestamp -n prod
+    expected: "contains: OOMKilling"
